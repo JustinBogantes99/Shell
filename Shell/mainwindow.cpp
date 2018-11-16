@@ -11,6 +11,22 @@ MainWindow::MainWindow(QWidget *parent) :
     addInputLine();
 }
 
+bool MainWindow::eventFilter(QObject *object, QEvent *event)
+{
+    if (object == currentVim && event->type() == QEvent::KeyPress) {
+        QKeyEvent *ke = static_cast<QKeyEvent *>(event);
+        if (ke->key() == Qt::Key_Insert)
+            if (file->open(QIODevice::ReadWrite)) {
+                    QTextStream stream(file);
+                    stream << currentVim->toPlainText() << endl;
+                    file->close();
+                    currentVim->setDisabled(1);
+            }
+    }
+    else
+        return false;
+}
+
 void MainWindow::addInputLine(){
     if(currentInput != nullptr){
         disconnect(currentInput);
@@ -72,6 +88,8 @@ QString MainWindow::manMenu(QString command){
         return "No existe el commando " + command ;
     }
 }
+
+
 
 void MainWindow::commands(){
     QString line = currentInput->text();
@@ -140,24 +158,40 @@ void MainWindow::commands(){
         QDate* date = new QDate();
         lineNum = new QLabel(QString::number(contLine)+"     >> Fecha:  " + date->currentDate().toString());
 
+    }else if(command[0] == "chmod"){
+        if(command.size() > 1){
+           file->setFileName(path->path()+"/"+command[1]);
+           if(file->exists()){
+               lineNum = new QLabel(QString::number(contLine)+"     >> Los permisos han cambiado";
+           }
+           }else{
+               lineNum = new QLabel(QString::number(contLine)+"     >> El archivo no existe " + path->path()+"/"+command[1]);
+           }
+        }else{
+            lineNum = new QLabel(QString::number(contLine)+"     >> Introduzca un archivo txt");
+        }
     }else if(command[0] == "vim"){
         if(command.size() > 1){
-           QFile file(path->path()+"/"+command[1]);
-           if(file.exists()){
-               if(!file.open(QIODevice::ReadOnly)) {
+           file->setFileName(path->path()+"/"+command[1]);
+           if(file->exists()){
+               if(!file->open(QIODevice::ReadWrite)) {
                    lineNum = new QLabel(QString::number(contLine)+"     >> No se pudo abrir el archivo ");
+               }else{
+                   QTextStream in(file);
+                   QStringList* fields =  new QStringList();
+                   QString txt = "";
+                   while(!in.atEnd()) {
+                       QString line = in.readLine();
+                       fields->append(line);
+                       txt = txt + line + "\n";
+                   }
+                   currentVim =  new QTextEdit();
+                   currentVim->setText(txt);
+                   widgetLayout->addWidget(currentVim);
+                   currentVim->installEventFilter(this);;
+                   file->close();
+                   lineNum = new QLabel();
                }
-
-               QTextStream in(&file);
-               QStringList* fields =  new QStringList();
-               QString txt = "";
-               while(!in.atEnd()) {
-                   QString line = in.readLine();
-                   fields->append(line);
-                   txt = txt + line + "\n";
-               }
-               lineNum = new QLabel(QString::number(contLine)+"     >> " + txt);
-               file.close();
            }else{
                lineNum = new QLabel(QString::number(contLine)+"     >> El archivo no existe " + path->path()+"/"+command[1]);
            }
