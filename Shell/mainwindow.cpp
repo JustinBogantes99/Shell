@@ -1,5 +1,10 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <stdio.h>
+#include <iostream>
+#include <QDesktopWidget>
+#include <QPushButton>
+#include <QSignalMapper>
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -7,8 +12,17 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    resize(QDesktopWidget().availableGeometry(this).size() * 1);
     path->setPath(path->root().path());
+    ui->treeWidget->setColumnCount(1);
     addInputLine();
+    QTreeWidgetItem* rootItem = new QTreeWidgetItem();
+    rootItem->setText(0,"C:");
+    ui->treeWidget->addTopLevelItem(rootItem);
+    updateTreeView(path,rootItem,0);
+    updateGraphicView();
+    connect(ui->treeWidget, SIGNAL(itemSelectionChanged()), this, SLOT(redireccionarPath()));
+
 }
 
 bool MainWindow::eventFilter(QObject *object, QEvent *event)
@@ -20,7 +34,7 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event)
                     QTextStream stream(file);
                     stream << currentVim->toPlainText() << endl;
                     file->close();
-                    currentVim->setDisabled(1);
+                    currentVim->setReadOnly(1);
             }
     }
     else
@@ -50,6 +64,127 @@ void MainWindow::addInputLine(){
     ui->Shell->addItem(itemN);
     ui->Shell->setItemWidget(itemN, widget);
     connect(currentInput, SIGNAL(returnPressed()),SLOT(commands()));
+}
+
+void MainWindow::updateGraphicView(){
+    QGraphicsScene*  scene =  new QGraphicsScene();
+    QStringList files = path->entryList();
+    for(int i = 2; i < files.size();i++){
+
+        QToolButton* item = new QToolButton();
+        item->setGeometry(((i-2)%5)*120,((i-2)/5)*85,110,85);
+        item->setIcon(QIcon(":/resources/images/carpeta.png"));
+        item->setIconSize(QSize(100,60));
+        item->setToolButtonStyle((Qt::ToolButtonTextUnderIcon));
+        item->setStyleSheet("QToolButton { background-color : white;border-radius: 0; }");
+        item->setText(files[i]);
+
+
+       /* QGraphicsPixmapItem* item = new QGraphicsPixmapItem();
+        QPixmap pixmap = QPixmap(":/resources/images/carpeta.png");
+        item->setPixmap(pixmap);
+        item->setScale(1);
+
+        QGraphicsTextItem* item2 = new QGraphicsTextItem();
+        item2->setPlainText(files[i]);
+        QPointF point = QPointF(((i-2)%5)*110,((i-2)/5)*85);
+        QPointF pointItem = item->mapFromScene(point);
+        item->setPos(pointItem);
+
+        QPointF point2 = QPointF(((i-2)%5)*110,((i-2)/5)*85);
+        QPointF pointItem2 = item2->mapFromScene(point2);
+        item2->setPos(pointItem2);*/
+        scene->addWidget(item);
+       // scene->addItem(item2);
+        QSignalMapper* sigmapper = new QSignalMapper(this);
+        connect (item, SIGNAL(clicked()), sigmapper, SLOT(map())) ;
+        sigmapper -> setMapping (item, files[i]) ;
+        connect(sigmapper, SIGNAL(mapped(QString)),this,SLOT(redireccionarPathGraphics(QString)));
+
+
+
+    }
+    ui->graphicsView->setScene(scene);
+}
+
+void MainWindow::redireccionarPathGraphics(QString Newpath){
+    path->cd(Newpath);
+    ui->treeWidget->clear();
+    QTreeWidgetItem* rootItem = new QTreeWidgetItem();
+    rootItem->setText(0,path->path());
+    ui->treeWidget->addTopLevelItem(rootItem);
+    updateTreeView(path,rootItem,0);
+    addInputLine();
+    updateGraphicView();
+
+}
+
+void MainWindow::updateTreeView(QDir* dir,QTreeWidgetItem* root,int cont){
+    cont++;
+    QStringList files = dir->entryList();
+    if(cont <= 2){
+        if(!dir->isEmpty() || files.size() >= 2 || cont >= 2){
+            for (int i = 2; i < files.size(); ++i){
+                QTreeWidgetItem* rootItem = addTreeChild(root,files[i]);
+                QDir* dirHijo =  new QDir();
+                if(dir->path().back() == "/")
+                    dirHijo->setPath(dir->path()+files[i]);
+                else{
+                    dirHijo->setPath(dir->path()+"/"+files[i]);
+                }
+                if(dirHijo->exists() && !dirHijo->isEmpty()){
+                    updateTreeView(dirHijo,rootItem,cont);
+                }
+            }
+        }
+    }
+}
+
+void MainWindow::redireccionarPath(){
+    QTreeWidgetItem* current = ui->treeWidget->currentItem();
+    QString txt =  current->text(0);
+    while(current->parent()){
+        current = current->parent();
+        txt = current->text(0) + "/" + txt;
+    }
+    path->cd(txt);
+    ui->treeWidget->clear();
+    QTreeWidgetItem* rootItem = new QTreeWidgetItem();
+    rootItem->setText(0,path->path());
+    ui->treeWidget->addTopLevelItem(rootItem);
+    updateTreeView(path,rootItem,0);
+    addInputLine();
+    updateGraphicView();
+
+}
+
+/*void MainWindow::updateTreeView(){
+    QStringList files = path->entryList();
+    QList<QTreeWidgetItem *> items;
+    for (int i = 0; i < files.size(); ++i){
+        items.append(new QTreeWidgetItem((QTreeWidget*)0, QStringList(files[i])));
+        QDir* pathInterno = new QDir();
+        pathInterno->setPath(path->path()+"/"+files[i]);
+        QStringList filesInternos = pathInterno->entryList();
+        QList<QTreeWidgetItem *> itemsInternos;
+        for(int e = 0; e < filesInternos.size();e++)
+            addTreeChild(items[i],filesInternos[e]);
+    }
+    ui->treeWidget->insertTopLevelItems(0, items);
+
+}*/
+
+QTreeWidgetItem* MainWindow::addTreeChild(QTreeWidgetItem *parent,QString name)
+{
+    // QTreeWidgetItem(QTreeWidget * parent, int type = Type)
+    QTreeWidgetItem *treeItem = new QTreeWidgetItem();
+
+    // QTreeWidgetItem::setText(int column, const QString & text)
+    treeItem->setText(0, name);
+
+    // QTreeWidgetItem::addChild(QTreeWidgetItem * child)
+    parent->addChild(treeItem);
+    return treeItem;
 }
 
 QString MainWindow::manMenu(QString command){
@@ -89,8 +224,6 @@ QString MainWindow::manMenu(QString command){
     }
 }
 
-
-
 void MainWindow::commands(){
     QString line = currentInput->text();
     QStringList command = line.split(' ');
@@ -102,7 +235,6 @@ void MainWindow::commands(){
         if(command.size() > 1){
             lineNum = new QLabel(QString::number(contLine)+"     >>" + manMenu(command[1]));
 
-
         } else {
             lineNum = new QLabel(QString::number(contLine)+"     >> El comando man necesita el otro comando del cual quiere información");
 
@@ -111,7 +243,12 @@ void MainWindow::commands(){
         if(command.size() > 1){
             if(path->cd(command[1])){
                 lineNum = new QLabel(QString::number(contLine)+"     >> Cambio al path " + command[1]);
-                 ;
+                ui->treeWidget->clear();
+                QTreeWidgetItem* rootItem = new QTreeWidgetItem();
+                rootItem->setText(0,path->path());
+                ui->treeWidget->addTopLevelItem(rootItem);
+                updateTreeView(path,rootItem,0);
+                updateGraphicView();
             }else{
                 lineNum = new QLabel(QString::number(contLine)+"     >> El path " + command[1] + " no existe");
             }
@@ -157,19 +294,6 @@ void MainWindow::commands(){
     }else if(command[0] == "date"){
         QDate* date = new QDate();
         lineNum = new QLabel(QString::number(contLine)+"     >> Fecha:  " + date->currentDate().toString());
-
-    }else if(command[0] == "chmod"){
-        if(command.size() > 1){
-           file->setFileName(path->path()+"/"+command[1]);
-           if(file->exists()){
-               lineNum = new QLabel(QString::number(contLine)+"     >> Los permisos han cambiado";
-           }
-           }else{
-               lineNum = new QLabel(QString::number(contLine)+"     >> El archivo no existe " + path->path()+"/"+command[1]);
-           }
-        }else{
-            lineNum = new QLabel(QString::number(contLine)+"     >> Introduzca un archivo txt");
-        }
     }else if(command[0] == "vim"){
         if(command.size() > 1){
            file->setFileName(path->path()+"/"+command[1]);
@@ -198,6 +322,65 @@ void MainWindow::commands(){
         }else{
             lineNum = new QLabel(QString::number(contLine)+"     >> Introduzca un archivo txt");
         }
+    }else if(command[0] == "cat"){
+        if(command.size() >2){
+            file->setFileName(path->path()+"/"+command[1]);
+            QFile* file2 =  new QFile();
+            file2->setFileName(path->path()+"/"+command[2]);
+            if(file->exists() && file2->exists()){
+                if(!file->open(QIODevice::ReadWrite)) {
+                    lineNum = new QLabel(QString::number(contLine)+"     >> No se pudo abrir el archivo ");
+                }else{
+                    QTextStream in(file);
+                    QStringList* fields =  new QStringList();
+                    QString txt = "";
+                    while(!in.atEnd()) {
+                        QString line = in.readLine();
+                        fields->append(line);
+                        txt = txt + line + "\n";
+                    }
+                    if (file2->open(QIODevice::ReadWrite)) {
+
+                        QTextStream in(file2);
+                        QStringList* fields =  new QStringList();
+                        while(!in.atEnd()) {
+                            QString line = in.readLine();
+                            fields->append(line);
+                            txt = txt + line + "\n";
+                        }
+                    }
+                    QTextStream stream(file);
+                    stream << txt << endl;
+                    file->close();
+                }
+            }
+        }else if(command.size() > 1){
+           file->setFileName(path->path()+"/"+command[1]);
+           if(file->exists()){
+               if(!file->open(QIODevice::ReadWrite)) {
+                   lineNum = new QLabel(QString::number(contLine)+"     >> No se pudo abrir el archivo ");
+               }else{
+                   QTextStream in(file);
+                   QStringList* fields =  new QStringList();
+                   QString txt = "";
+                   while(!in.atEnd()) {
+                       QString line = in.readLine();
+                       fields->append(line);
+                       txt = txt + line + "\n";
+                   }
+                   currentVim =  new QTextEdit();
+                   currentVim->setText(txt);
+                   widgetLayout->addWidget(currentVim);
+                   currentVim->setReadOnly(1);
+                   file->close();
+                   lineNum = new QLabel();
+               }
+           }else{
+               lineNum = new QLabel(QString::number(contLine)+"     >> El archivo no existe " + path->path()+"/"+command[1]);
+           }
+        }else{
+            lineNum = new QLabel(QString::number(contLine)+"     >> Introduzca un archivo txt");
+        }
     }else if(command[0] == "cp"){
         if(command.size() > 2){
             if(QFile::exists(command[1])){
@@ -212,6 +395,37 @@ void MainWindow::commands(){
         }else{
             lineNum = new QLabel(QString::number(contLine)+"     >> Por favor ingrese el origen y el desino del archivo a copiar");
         }
+    }else if(command[0] == "chmod"){
+    if(command.size() > 4){
+       file->setFileName(path->path()+"/"+command[4]);
+       if(file->exists()){
+           QString userP = command[1].split('=')[1];
+           QString groupP = command[2].split("=")[1];
+           QString otherP = command[3].split("=")[1];
+           if(userP.contains("r"))
+             file->setPermissions(QFileDevice::ReadUser);
+           if(userP.contains("w"))
+               file->setPermissions(QFileDevice::WriteUser);
+           if(userP.contains("x"))
+               file->setPermissions(QFileDevice::ExeUser);
+           if(groupP.contains("r"))
+             file->setPermissions(QFileDevice::ReadGroup);
+           if(groupP.contains("w"))
+               file->setPermissions(QFileDevice::WriteGroup);
+           if(groupP.contains("x"))
+               file->setPermissions(QFileDevice::ExeGroup);
+           if(otherP.contains("r"))
+             file->setPermissions(QFileDevice::ReadOther);
+           if(otherP.contains("w"))
+               file->setPermissions(QFileDevice::WriteOther);
+           if(otherP.contains("x"))
+               file->setPermissions(QFileDevice::ExeOther);
+       }else{
+           lineNum = new QLabel(QString::number(contLine)+"     >> El archivo no existe " + path->path()+"/"+command[1]);
+       }
+     }else{
+        lineNum = new QLabel(QString::number(contLine)+"     >> Introduzca un archivo txt");
+     }
     }else if(command[0] == "mv"){
         if(command.size() > 2){
             if(QFile::exists(command[1])){

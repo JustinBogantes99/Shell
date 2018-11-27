@@ -11,12 +11,15 @@
 
 #include <QtCore/QVariant>
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QGraphicsView>
 #include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QHeaderView>
 #include <QtWidgets/QListWidget>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QStatusBar>
 #include <QtWidgets/QToolBar>
+#include <QtWidgets/QTreeWidget>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
 
@@ -28,6 +31,9 @@ public:
     QWidget *centralWidget;
     QHBoxLayout *horizontalLayout;
     QVBoxLayout *verticalLayout;
+    QHBoxLayout *horizontalLayout_2;
+    QGraphicsView *graphicsView;
+    QTreeWidget *treeWidget;
     QListWidget *Shell;
     QMenuBar *menuBar;
     QToolBar *mainToolBar;
@@ -37,7 +43,7 @@ public:
     {
         if (MainWindow->objectName().isEmpty())
             MainWindow->setObjectName(QStringLiteral("MainWindow"));
-        MainWindow->resize(888, 502);
+        MainWindow->resize(906, 580);
         centralWidget = new QWidget(MainWindow);
         centralWidget->setObjectName(QStringLiteral("centralWidget"));
         horizontalLayout = new QHBoxLayout(centralWidget);
@@ -47,6 +53,28 @@ public:
         verticalLayout = new QVBoxLayout();
         verticalLayout->setSpacing(6);
         verticalLayout->setObjectName(QStringLiteral("verticalLayout"));
+        verticalLayout->setSizeConstraint(QLayout::SetFixedSize);
+        horizontalLayout_2 = new QHBoxLayout();
+        horizontalLayout_2->setSpacing(6);
+        horizontalLayout_2->setObjectName(QStringLiteral("horizontalLayout_2"));
+        horizontalLayout_2->setSizeConstraint(QLayout::SetFixedSize);
+        graphicsView = new QGraphicsView(centralWidget);
+        graphicsView->setObjectName(QStringLiteral("graphicsView"));
+        graphicsView->setSizeAdjustPolicy(QAbstractScrollArea::AdjustIgnored);
+
+        horizontalLayout_2->addWidget(graphicsView);
+
+        treeWidget = new QTreeWidget(centralWidget);
+        QTreeWidgetItem *__qtreewidgetitem = new QTreeWidgetItem();
+        __qtreewidgetitem->setText(0, QStringLiteral("1"));
+        treeWidget->setHeaderItem(__qtreewidgetitem);
+        treeWidget->setObjectName(QStringLiteral("treeWidget"));
+
+        horizontalLayout_2->addWidget(treeWidget);
+
+
+        verticalLayout->addLayout(horizontalLayout_2);
+
         Shell = new QListWidget(centralWidget);
         Shell->setObjectName(QStringLiteral("Shell"));
         QPalette palette;
@@ -75,7 +103,7 @@ public:
         MainWindow->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(MainWindow);
         menuBar->setObjectName(QStringLiteral("menuBar"));
-        menuBar->setGeometry(QRect(0, 0, 888, 21));
+        menuBar->setGeometry(QRect(0, 0, 906, 21));
         MainWindow->setMenuBar(menuBar);
         mainToolBar = new QToolBar(MainWindow);
         mainToolBar->setObjectName(QStringLiteral("mainToolBar"));

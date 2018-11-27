@@ -11,6 +11,12 @@
 #include <QTextStream>
 #include <QTextEdit>
 #include <QKeyEvent>
+#include <QTreeWidgetItem>
+#include <QGraphicsItem>
+#include <QToolButton>
+#include <QGraphicsGridLayout>
+#include <QGraphicsLayoutItem>
+
 
 namespace Ui {
 class MainWindow;
@@ -23,10 +29,14 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+
+signals:
+    void clicked(QString*);
 public slots:
    void addInputLine();
    void commands();
-   void saveFile();
+   void redireccionarPath();
+   void redireccionarPathGraphics(QString newPath);
 private:
     Ui::MainWindow *ui;
     int contLine = 1;
@@ -36,6 +46,10 @@ private:
     QString manMenu(QString);
     QDir* path = new QDir();
     bool eventFilter(QObject *object, QEvent *event);
+    //void updateTreeView();
+    QTreeWidgetItem* addTreeChild(QTreeWidgetItem *parent,QString name);
+    void updateTreeView(QDir* dir,QTreeWidgetItem* root,int cont);
+    void updateGraphicView();
 };
 
 #endif // MAINWINDOW_H
